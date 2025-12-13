@@ -56,9 +56,10 @@ pip install pygame
 - python main.py
 
 ### NOTE:
-the only **enemy** in this game **enemy.png** image in the list of assets you can
-change it if you dont like or keep it only if you name it enemy will it
-work has an enemy, you may wok your way around to add more enemy, different knid that
+
+the only **enemy** in this game is the **enemy.png** image in the list of assets you can
+change it if you dont like or keep it. only if you name it enemy will it
+work has an enemy, you may work your way around to add more enemy, different knid that
 is up to you feel free to work around it.
 ---
 and also there is presaved level in the level_data.json but when you create a new
