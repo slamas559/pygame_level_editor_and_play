@@ -61,7 +61,9 @@ the only **enemy** in this game is the **enemy.png** image in the list of assets
 change it if you dont like or keep it. only if you name it enemy will it
 work has an enemy, you may work your way around to add more enemy, different knid that
 is up to you feel free to work around it.
+
 ---
+
 and also there is presaved level in the level_data.json but when you create a new
 level and you pressed **s** which saves it, it overwrite the former level on the 
 level_data.json files you can make it accept many levels so you can switch between levels without clearing the others 
