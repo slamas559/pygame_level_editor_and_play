@@ -29,7 +29,7 @@ PLAYER_BULLET_COLOR = (255, 0, 0)
 
 # Enemy config
 ENEMY_SPEED = 1.2
-ENEMY_SHOOT_RANGE = 300
+ENEMY_SHOOT_RANGE = 100
 ENEMY_SHOOT_COOLDOWN = 90 
 ENEMY_BULLET_SPEED = 6
 ENEMY_DAMAGE = 1
@@ -37,11 +37,19 @@ PLAYER_TOUCH_DAMAGE = 1
 ENEMY_MAX_HEALTH = 3 
 BULLET_SIZE = 6
 
+# ... (existing globals like player_invuln, etc.)
+
+# --- NEW LEVEL MANAGEMENT VARIABLES ---
+LEVEL_FILE = "level_data.json"
+ALL_LEVELS = [] # List to hold all level data from JSON
+CURRENT_LEVEL_INDEX = 0
+
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Platformer with Enemies & Health")
 clock = pygame.time.Clock()
 
-bg_path = "assets/background/background.png"
+# bg_path = "assets/background/background.png"
+bg_path = "assets/background/BG.png"
 if os.path.exists(bg_path):
     background_image = pygame.image.load(bg_path).convert()
     background_image = pygame.transform.scale(background_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -66,10 +74,6 @@ if os.path.isdir(img_folder_path):
             except Exception as e:
                 print("Failed to load", filename, e)
 
-# -----------------------
-# LEVEL LOADING
-# -----------------------
-LEVEL_FILE = "level_data.json"
 
 
 class Enemy:
@@ -127,6 +131,7 @@ class Enemy:
 
         # shoot if player is within horizontal range
         dist = abs(player_center[0] - self.rect.centerx)
+        # print(dist)
         if dist <= ENEMY_SHOOT_RANGE:
             # fire bullet toward player
             dx = player_center[0] - self.rect.centerx
@@ -167,17 +172,46 @@ class Enemy:
             pygame.draw.rect(surf, (0, 255, 0), (bar_x, bar_y, fill_w, bar_h))
 
 
-def load_level_and_enemies():
+# -----------------------
+# LEVEL LOADING (MODIFIED)
+# -----------------------
+
+def load_all_levels():
+    global ALL_LEVELS
+    if not os.path.exists(LEVEL_FILE) or os.path.getsize(LEVEL_FILE) == 0:
+        print("Level file not found or empty:", LEVEL_FILE)
+        return False
+    try:
+        with open(LEVEL_FILE, "r") as f:
+            ALL_LEVELS = json.load(f)
+            if not isinstance(ALL_LEVELS, list) or not ALL_LEVELS:
+                print("Error: Level data is not a list or is empty.")
+                ALL_LEVELS = []
+                return False
+            print(f"Loaded {len(ALL_LEVELS)} levels.")
+            return True
+    except json.JSONDecodeError:
+        print("Error: Could not decode level_data.json.")
+        return False
+
+
+def load_current_level():
+    global CURRENT_LEVEL_INDEX
+    if not ALL_LEVELS:
+        print("No levels loaded. Cannot start game.")
+        return [], []
+
+    if CURRENT_LEVEL_INDEX >= len(ALL_LEVELS):
+        print("Game finished! All levels completed.")
+        return [], []
+
+    print(f"Loading Level {CURRENT_LEVEL_INDEX + 1}...")
+    level_data = ALL_LEVELS[CURRENT_LEVEL_INDEX]
+
     tiles = []
     enemies = []
-    if not os.path.exists(LEVEL_FILE):
-        print("Level file not found:", LEVEL_FILE)
-        return tiles, enemies
 
-    with open(LEVEL_FILE, "r") as f:
-        data = json.load(f)
-
-    for t in data:
+    for t in level_data:
         asset_name = t.get("asset")
         tx = t.get("x", 0)
         ty = t.get("y", 0)
@@ -195,7 +229,11 @@ def load_level_and_enemies():
     return tiles, enemies
 
 
-tiles, enemies = load_level_and_enemies()
+# Initial load of all level data
+load_all_levels()
+tiles, enemies = load_current_level()
+# ... (rest of your initialization)
+
 bullets = []  # list of dicts {x,y,vx,vy,rect,owner}
 
 player = pygame.Rect(200, 100, TILE_SIZE, TILE_SIZE)
@@ -285,7 +323,7 @@ while running:
 
             if event.key == pygame.K_r:
                 # reload level and reset
-                tiles, enemies = load_level_and_enemies()
+                tiles, enemies = load_current_level()
                 bullets.clear()
                 player.x, player.y = 200, 100
                 vel_y = 0
@@ -460,6 +498,38 @@ while running:
         if 0 <= idx < len(enemies):
             enemies.pop(idx)
 
+    # ... (after updating and cleaning up enemies/bullets)
+
+    # -----------------------
+    # LEVEL PROGRESSION CHECK
+    # -----------------------
+    if len(enemies) == 0 and ALL_LEVELS:
+        if CURRENT_LEVEL_INDEX + 1 < len(ALL_LEVELS):
+            # Move to the next level
+            CURRENT_LEVEL_INDEX += 1
+            bullets.clear()
+
+            # Reset player to starting position (assuming a default start)
+            player.x, player.y = 200, 100
+            player_health = PLAYER_MAX_HEALTH
+            vel_y = 0
+
+            tiles, enemies = load_current_level()
+            print(f"Moving to Level {CURRENT_LEVEL_INDEX + 1}!")
+
+        elif CURRENT_LEVEL_INDEX + 1 == len(ALL_LEVELS):
+            # All levels completed!
+            fontbig = pygame.font.SysFont("Arial", 48)
+            t = fontbig.render("GAME COMPLETE!", True, (0, 255, 0))
+            screen.blit(t, (WINDOW_WIDTH // 2 - t.get_width() // 2, WINDOW_HEIGHT // 2 - t.get_height() // 2))
+
+            # Freeze the screen on "Game Complete"
+            pygame.display.update()
+            pygame.time.wait(3000)  # wait 3 seconds
+            running = False  # Or prompt user to restart
+            continue
+
+    # ... (continue with DRAW TILES, ENEMIES, etc.)
     # -----------------------
     # PLAYER ↔ ENEMY TOUCH DAMAGE
     # -----------------------
@@ -541,7 +611,7 @@ while running:
                 if ev.type == pygame.KEYDOWN and ev.key == pygame.K_r:
                     waiting = False
                     # reset state
-                    tiles, enemies = load_level_and_enemies()
+                    tiles, enemies = load_current_level()
                     bullets.clear()
                     player.x, player.y = 200, 100
                     vel_y = 0
